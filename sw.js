@@ -1,4 +1,4 @@
-const CACHE_NAME = 'recipe-scaler-v1';
+const CACHE_NAME = 'recipe-scaler-v2';
 const FILES = [
   './',
   './index.html',

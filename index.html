@@ -76,6 +76,8 @@ table.rows td{ padding:6px 4px; border-bottom:1px solid var(--border); vertical-
 .history-item{ display:flex; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid var(--border); }
 .history-item:last-child{ border-bottom:none; }
 .history-item .hname{ flex:1; min-width:0; }
+.history-item input[type="checkbox"]{ width:24px; height:24px; flex:none; accent-color:#e8590c; }
+button.act:disabled{ opacity:.45; }
 .history-item .hdate{ font-size:12px; color:var(--muted); }
 footer{ padding:8px 12px 28px; text-align:center; color:var(--muted); font-size:13px; max-width:760px; margin:0 auto; }
 #test-output{ white-space:pre-wrap; font-size:13px; }
@@ -154,6 +156,7 @@ footer{ padding:8px 12px 28px; text-align:center; color:var(--muted); font-size:
       <button type="button" class="act" id="save-history-btn">名前を付けて保存</button>
       <button type="button" class="act" id="clear-current-btn">現在の入力を消す</button>
       <button type="button" class="act" id="clear-history-btn">履歴を全削除</button>
+      <button type="button" class="act" id="delete-selected-btn" disabled>選択したものを削除（0件）</button>
     </div>
     <div class="result-note" id="history-status"></div>
     <div id="history-list"></div>
@@ -442,6 +445,20 @@ var SAMPLES = [
 var LS_CURRENT = 'recipeScaler.v1.current';
 var LS_HISTORY = 'recipeScaler.v1.history';
 var state = { from:'2', to:'1', mode:'practical', rows:[] };
+var historySelection = {};
+function historyKey(item){ return item.name + '|' + (item.savedAt || ''); }
+function selectedHistoryCount(h){
+  var n = 0;
+  h.forEach(function(item){ if(historySelection[historyKey(item)]) n++; });
+  return n;
+}
+function updateDeleteSelectedBtn(h){
+  var btn = $('delete-selected-btn');
+  if(!btn) return;
+  var n = selectedHistoryCount(h || loadHistory());
+  btn.textContent = '選択したものを削除（' + n + '件）';
+  btn.disabled = (n === 0);
+}
 var rowSeq = 1;
 function newRow(r){ r.id = rowSeq++; return r; }
 function $(id){ return document.getElementById(id); }
@@ -696,11 +713,22 @@ function fallbackCopy(text){
 
 function renderHistory(){
   var h = loadHistory();
+  var valid = {};
+  h.forEach(function(item){ valid[historyKey(item)] = true; });
+  Object.keys(historySelection).forEach(function(k){ if(!valid[k]) delete historySelection[k]; });
   var list = $('history-list');
   list.innerHTML = '';
-  if(h.length === 0){ list.appendChild(el('div', 'result-note', '保存したレシピはまだありません。')); return; }
+  if(h.length === 0){ list.appendChild(el('div', 'result-note', '保存したレシピはまだありません。')); updateDeleteSelectedBtn(h); return; }
   h.forEach(function(item, index){
     var div = el('div', 'history-item');
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = !!historySelection[historyKey(item)];
+    cb.setAttribute('aria-label', item.name + 'を選択');
+    cb.addEventListener('change', function(){
+      if(cb.checked) historySelection[historyKey(item)] = true; else delete historySelection[historyKey(item)];
+      updateDeleteSelectedBtn(h);
+    });
+    div.appendChild(cb);
     var nd = el('span', 'hname', item.name);
     nd.appendChild(el('div', 'hdate', item.savedAt || ''));
     div.appendChild(nd);
@@ -721,6 +749,7 @@ function renderHistory(){
     div.appendChild(load); div.appendChild(del);
     list.appendChild(div);
   });
+  updateDeleteSelectedBtn(h);
 }
 
 function renderAll(){ renderQuick(); renderRows(); renderResults(); scheduleSave(); }
@@ -821,8 +850,19 @@ function init(){
   });
   $('clear-history-btn').addEventListener('click', function(){
     if(!confirm('保存した履歴をすべて削除しますか？現在の入力は消えません。')) return;
+    historySelection = {};
     storeHistory([]); renderHistory();
     $('history-status').textContent = '履歴を全て削除しました';
+  });
+  $('delete-selected-btn').addEventListener('click', function(){
+    var h = loadHistory();
+    var n = selectedHistoryCount(h);
+    if(n === 0) return;
+    if(!confirm('選択した' + n + '件のレシピを削除しますか？')) return;
+    var rest = h.filter(function(item){ return !historySelection[historyKey(item)]; });
+    historySelection = {};
+    storeHistory(rest); renderHistory();
+    $('history-status').textContent = n + '件を削除しました（残り' + rest.length + '件）';
   });
   renderAll();
   renderHistory();
