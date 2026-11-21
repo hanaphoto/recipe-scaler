@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>説明書 | レシピ分量変換</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif; background:#fff8f2; color:#26221f; font-size:16px; line-height:1.7; }
+@media (prefers-color-scheme: dark){ body{ background:#1d1a17; color:#f1ece6; } main{ background:#2a2521 !important; border-color:#4a423a !important; } th,td{ border-color:#4a423a !important; } code{ background:#3a342e !important; } }
+main{ max-width:760px; margin:0 auto; padding:16px 18px 40px; background:#fff; }
+h1{ font-size:22px; } h2{ font-size:18px; border-left:5px solid #e8590c; padding-left:8px; margin-top:28px; }
+table{ border-collapse:collapse; width:100%; margin:8px 0; }
+th,td{ border:1px solid #e8ddd2; padding:6px 8px; text-align:left; font-size:15px; }
+code{ background:#f5efe9; padding:1px 5px; border-radius:4px; }
+a{ color:#e8590c; }
+</style>
+</head>
+<body>
+<main>
+<h1>レシピ分量変換 説明書</h1>
+<p>「何人前」と書いてあるレシピの材料を、作りたい人数に合わせて一括で換算するアプリです。<a href="index.html">アプリ本体へ</a></p>
+
+<h2>基本の使い方</h2>
+<ol>
+<li>「元のレシピ」が何人前かと、「作りたい」人数を入力します。倍率が大きく表示されます</li>
+<li>レシピサイトの材料欄をコピーして貼り付け、「分解して取り込む」を押します</li>
+<li>材料が1行ずつに分かれます。間違いはその場で直せます</li>
+<li>人数を変えると、変換後の分量がその場で変わります。「変換後をコピー」や「買い物メモでコピー」で持ち出せます</li>
+</ol>
+
+<h2>貼り付けで取り込める書き方</h2>
+<table>
+<tr><th>書き方</th><th>読み方</th></tr>
+<tr><td><code>鶏むね肉 200g</code></td><td>鶏むね肉 / 200 / g</td></tr>
+<tr><td><code>しょうゆ 大さじ2</code></td><td>しょうゆ / 2 / 大さじ</td></tr>
+<tr><td><code>玉ねぎ 1/2個</code></td><td>玉ねぎ / 0.5 / 個</td></tr>
+<tr><td><code>砂糖 小さじ1と1/2</code></td><td>砂糖 / 1.5 / 小さじ</td></tr>
+<tr><td><code>鶏肉200g</code>（スペースなし）</td><td>鶏肉 / 200 / g</td></tr>
+<tr><td><code>鶏肉 ２００ｇ</code>（全角）</td><td>鶏肉 / 200 / g</td></tr>
+<tr><td><code>玉ねぎ 半分</code> / <code>卵 1個半</code></td><td>0.5 / 1.5 として読みます</td></tr>
+<tr><td><code>鶏むね肉 1枚（約250g）</code></td><td>括弧の中は備考として残ります（備考の数字は変換されません）</td></tr>
+</table>
+<p>数量が読み取れなかった行は消えずに「数量が読み取れませんでした」と表示され、結果やコピーにも「（要確認）」付きで残ります。数字のない行は見出しとして扱います。</p>
+
+<h2>丸め方（作りやすく丸める）</h2>
+<table>
+<tr><th>単位</th><th>丸め方</th></tr>
+<tr><td>g・ml・cc</td><td>10未満は0.5刻み、10〜99は1刻み、100以上は5刻み、1000以上は10刻み。丸めた場合は換算値も併記します</td></tr>
+<tr><td>大さじ・小さじ・カップ</td><td>1/4、1/3、1/2、2/3、3/4 の分数で表示します（例: 大さじ1と1/3）</td></tr>
+<tr><td>個・本・枚など</td><td>0.25刻みで、小数で表示します（例: 1.5個）。0にはなりません</td></tr>
+<tr><td>kg・L</td><td>小数第2位まで。1未満のときは g・ml の目安も添えます</td></tr>
+</table>
+<p>同人数（倍率1）のときは丸めず、元の分量をそのまま出します。丸めずに小数第2位まで見たいときは「きっちり計算」に切り替えてください（分数併記は大さじ・小さじ・カップだけです）。</p>
+<p>カップは日本の計量カップ（1カップ＝200ml）が前提です。海外のレシピ（1カップ約240ml）とは違うので注意してください。</p>
+
+<h2>変換しないもの</h2>
+<p><code>少々</code>、<code>ひとつまみ</code>、<code>適量</code>、<code>お好みで</code> は、何倍にしても「そのまま」と表示します。塩 少々を3倍にしても意味がないためです。</p>
+
+<h2>「2〜3人前」のようなレシピ</h2>
+<p>範囲で書かれたレシピには対応していません。元の人数には代表値（普通は小さい方の数字）を入れてください。材料の「2〜3個」のような範囲表記も読み取れない行になります。</p>
+
+<h2>保存について</h2>
+<p>入力中の内容と履歴は、この端末のブラウザの中にだけ保存します。外部へ送信しません。履歴は20件までです。</p>
+<p>iPhoneでは、ホーム画面に追加しておくと長く保存が残ります。ホーム画面に追加せずに長期間（目安は1週間ほど）使わないと、ブラウザの仕組みで保存が消えることがあります。大事なレシピはコピーしてメモなどにも残してください。</p>
+<p>ホーム画面への追加: Safariでアプリを開き、共有ボタンから「ホーム画面に追加」を選びます。</p>
+
+<h2>注意</h2>
+<ul>
+<li>変換は目安です。味付けは元のレシピと味見で調整してください</li>
+<li>材料ごとの重さ換算（小麦粉 大さじ1＝約9gなど）は材料で値が違うため、このアプリでは扱っていません</li>
+</ul>
+<p><a href="index.html">アプリ本体へ戻る</a></p>
+</main>
+</body>
+</html>

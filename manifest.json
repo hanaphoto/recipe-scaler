@@ -1,0 +1,1 @@
+{"background_color":"#fff8f2","description":"何人前と書いてあるレシピの材料を、設定した人数に換算するWebアプリ","display":"standalone","icons":[{"sizes":"any","src":"icon.svg","type":"image/svg+xml"},{"sizes":"180x180","src":"icon-180.png","type":"image/png"}],"name":"レシピ分量変換","scope":"./","short_name":"分量変換","start_url":"./index.html","theme_color":"#e8590c"}

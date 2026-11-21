@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>レシピ分量変換</title>
+<meta name="description" content="何人前と書いてあるレシピの材料を、設定した人数に換算するWebアプリ">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#e8590c">
+<style>
+:root{
+  --accent:#e8590c; --accent-dark:#c94f04; --bg:#fff8f2; --card:#ffffff;
+  --text:#26221f; --muted:#7a7269; --border:#e8ddd2; --error:#c92a2a;
+  --ok:#2b8a3e; --warn-bg:#fff3bf;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#1d1a17; --card:#2a2521; --text:#f1ece6; --muted:#b3a89c; --border:#4a423a; --warn-bg:#4a3f1a; }
+}
+*{ box-sizing:border-box; }
+body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif; background:var(--bg); color:var(--text); font-size:16px; line-height:1.5; }
+header.top{ position:sticky; top:0; z-index:10; background:var(--card); border-bottom:2px solid var(--accent); padding:10px 12px 12px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+h1{ font-size:19px; margin:0 0 8px; display:flex; align-items:center; gap:8px; }
+h1 .spacer{ flex:1; }
+h1 a.manual-link{ font-size:13px; color:var(--accent); text-decoration:none; border:1px solid var(--accent); border-radius:8px; padding:4px 10px; min-height:32px; display:inline-flex; align-items:center; }
+.servings{ display:flex; gap:10px; flex-wrap:wrap; }
+.serv-box{ flex:1; min-width:140px; }
+.serv-box label{ display:block; font-size:13px; color:var(--muted); margin-bottom:2px; }
+.serv-ctrl{ display:flex; align-items:stretch; gap:6px; }
+.serv-ctrl button{ width:44px; min-height:48px; font-size:20px; border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:10px; }
+.serv-ctrl input{ flex:1; min-width:0; font-size:20px; text-align:center; padding:8px 4px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); }
+.serv-ctrl .unit-label{ align-self:center; font-size:14px; color:var(--muted); }
+.ratio{ margin-top:8px; font-size:22px; font-weight:700; }
+.ratio .mult{ color:var(--accent); }
+.err{ color:var(--error); font-size:14px; font-weight:600; margin-top:4px; min-height:1.2em; }
+.quick{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.quick button{ min-height:44px; padding:6px 12px; font-size:15px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); }
+.quick button:disabled{ opacity:.38; }
+.quick .qlabel{ align-self:center; font-size:13px; color:var(--muted); }
+main{ padding:12px; max-width:760px; margin:0 auto; }
+section{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; margin-bottom:12px; }
+h2{ font-size:16px; margin:0 0 8px; }
+textarea{ width:100%; min-height:110px; font-size:16px; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); }
+.btn-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+button.act{ min-height:48px; padding:8px 16px; font-size:16px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); }
+button.primary{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+button.primary:active{ background:var(--accent-dark); }
+button.small{ min-height:44px; padding:4px 10px; font-size:14px; }
+select{ font-size:16px; min-height:48px; padding:6px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); max-width:100%; }
+.mode-row{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+.mode-row label{ font-size:15px; display:inline-flex; gap:6px; align-items:center; min-height:44px; }
+table.rows{ width:100%; border-collapse:collapse; }
+table.rows td{ padding:6px 4px; border-bottom:1px solid var(--border); vertical-align:top; }
+.row-name{ width:100%; font-size:16px; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); }
+.row-qty{ width:76px; font-size:16px; padding:8px 6px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); text-align:right; }
+.row-unit{ width:86px; font-size:16px; padding:8px 6px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); }
+.row-note{ width:100%; font-size:13px; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--muted); margin-top:4px; }
+.row-btns{ white-space:nowrap; }
+.row-btns button{ width:44px; height:44px; font-size:16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); margin-left:4px; }
+.frac-btns{ display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; }
+.frac-btns button{ min-height:36px; padding:2px 10px; font-size:14px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--accent); }
+.tag{ display:inline-block; font-size:12px; font-weight:700; border-radius:6px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
+.tag-free{ background:#e6fcf5; color:var(--ok); }
+.tag-error{ background:#ffe3e3; color:var(--error); }
+.tag-heading{ background:var(--warn-bg); color:var(--text); }
+@media (prefers-color-scheme: dark){ .tag-free{ background:#12362a; } .tag-error{ background:#4a1d1d; } }
+.result-row{ display:flex; gap:8px; align-items:baseline; padding:8px 2px; border-bottom:1px solid var(--border); }
+.result-row:last-child{ border-bottom:none; }
+.result-name{ flex:1; min-width:0; }
+.result-orig{ color:var(--muted); font-size:14px; white-space:nowrap; }
+.result-conv{ font-size:21px; font-weight:800; white-space:nowrap; }
+.result-note{ font-size:12px; color:var(--muted); }
+.result-heading{ font-weight:800; padding:10px 2px 4px; }
+.result-error{ color:var(--error); }
+.history-item{ display:flex; gap:8px; align-items:center; padding:8px 2px; border-bottom:1px solid var(--border); }
+.history-item:last-child{ border-bottom:none; }
+.history-item .hname{ flex:1; min-width:0; }
+.history-item .hdate{ font-size:12px; color:var(--muted); }
+footer{ padding:8px 12px 28px; text-align:center; color:var(--muted); font-size:13px; max-width:760px; margin:0 auto; }
+#test-output{ white-space:pre-wrap; font-size:13px; }
+.hidden{ display:none; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>レシピ分量変換 <span class="spacer"></span><a class="manual-link" href="manual.html">説明書</a></h1>
+  <div class="servings">
+    <div class="serv-box">
+      <label for="from-input">元のレシピ</label>
+      <div class="serv-ctrl">
+        <button type="button" id="from-minus" aria-label="元の人数を減らす">−</button>
+        <input id="from-input" type="text" inputmode="decimal" value="2" aria-label="元の人数">
+        <button type="button" id="from-plus" aria-label="元の人数を増やす">＋</button>
+        <span class="unit-label">人前</span>
+      </div>
+    </div>
+    <div class="serv-box">
+      <label for="to-input">作りたい</label>
+      <div class="serv-ctrl">
+        <button type="button" id="to-minus" aria-label="作りたい人数を減らす">−</button>
+        <input id="to-input" type="text" inputmode="decimal" value="1" aria-label="作りたい人数">
+        <button type="button" id="to-plus" aria-label="作りたい人数を増やす">＋</button>
+        <span class="unit-label">人前</span>
+      </div>
+    </div>
+  </div>
+  <div class="ratio" id="ratio-display">2人前 → 1人前 ＝ <span class="mult">0.5倍</span></div>
+  <div class="err" id="serv-error" role="alert"></div>
+  <div class="quick" id="quick-to"></div>
+  <div class="quick" id="quick-mult"></div>
+</header>
+<main>
+  <section>
+    <h2>材料を貼り付け</h2>
+    <textarea id="paste-area" placeholder="材料を1行に1つずつ貼ってください（例: 鶏むね肉 200g）"></textarea>
+    <div class="btn-row">
+      <button type="button" class="act primary" id="parse-btn">分解して取り込む</button>
+      <button type="button" class="act" id="paste-clear-btn">貼り付け欄を消す</button>
+    </div>
+    <div class="btn-row">
+      <select id="sample-select" aria-label="サンプルレシピ"></select>
+      <button type="button" class="act" id="sample-btn">サンプルを入れる</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>材料（タップで直せます）</h2>
+    <table class="rows"><tbody id="rows-body"></tbody></table>
+    <div class="btn-row">
+      <button type="button" class="act" id="add-row-btn">＋ 材料を追加</button>
+    </div>
+    <div class="mode-row">
+      <span>丸め方:</span>
+      <label><input type="radio" name="mode" value="practical" checked> 作りやすく丸める</label>
+      <label><input type="radio" name="mode" value="exact"> きっちり計算</label>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="result-title">変換後</h2>
+    <div id="result-list"></div>
+    <div class="btn-row">
+      <button type="button" class="act primary" id="copy-conv-btn">変換後をコピー</button>
+      <button type="button" class="act" id="copy-memo-btn">買い物メモでコピー</button>
+      <button type="button" class="act" id="share-btn">共有</button>
+    </div>
+    <div class="result-note" id="copy-status"></div>
+  </section>
+
+  <section>
+    <h2>保存と履歴</h2>
+    <div class="btn-row">
+      <button type="button" class="act" id="save-history-btn">名前を付けて保存</button>
+      <button type="button" class="act" id="clear-current-btn">現在の入力を消す</button>
+      <button type="button" class="act" id="clear-history-btn">履歴を全削除</button>
+    </div>
+    <div class="result-note" id="history-status"></div>
+    <div id="history-list"></div>
+  </section>
+
+  <section id="test-section" class="hidden">
+    <h2>自己テスト（?test=1）</h2>
+    <div id="test-output"></div>
+  </section>
+</main>
+<footer>入力したレシピは、この端末の中だけで処理します。外部へ送信しません。</footer>
+<script>
+'use strict';
+/* ===== Core: rational arithmetic, parser, converter (pure, testable) ===== */
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while(b){ var t = a % b; a = b; b = t; } return a || 1; }
+function frac(n, d){
+  if(d === 0) return null;
+  if(d < 0){ n = -n; d = -d; }
+  var g = gcd(n, d);
+  return { n: n / g, d: d / g };
+}
+function fracFromDecimalString(s){
+  s = String(s).trim();
+  if(!/^\d+(\.\d+)?$/.test(s)) return null;
+  var parts = s.split('.');
+  if(parts.length === 1) return frac(parseInt(parts[0], 10), 1);
+  var den = Math.pow(10, parts[1].length);
+  return frac(parseInt(parts[0], 10) * den + parseInt(parts[1], 10), den);
+}
+var QTY_RE_SRC = '(?:\\d+と\\d+\\/\\d+|\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?)';
+function parseQuantityString(s){
+  s = String(s).trim();
+  var m = s.match(/^(\d+)と(\d+)\/(\d+)$/) || s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if(m) return frac(parseInt(m[1],10) * parseInt(m[3],10) + parseInt(m[2],10), parseInt(m[3],10));
+  m = s.match(/^(\d+)\/(\d+)$/);
+  if(m) return frac(parseInt(m[1],10), parseInt(m[2],10));
+  return fracFromDecimalString(s);
+}
+function fracMul(a, b){ return frac(a.n * b.n, a.d * b.d); }
+function fracDiv(a, b){ return frac(a.n * b.d, a.d * b.n); }
+function fracAdd(a, b){ return frac(a.n * b.d + b.n * a.d, a.d * b.d); }
+function fracNum(a){ return a.n / a.d; }
+function fracEq(a, b){ return a.n === b.n && a.d === b.d; }
+function fracCmp(a, b){ var x = a.n * b.d - b.n * a.d; return x > 0 ? 1 : (x < 0 ? -1 : 0); }
+
+var UNIT_DEFS = [
+  { unit:'大さじ', cat:'spoonCup', aliases:['大さじ','大匙','おおさじ'] },
+  { unit:'小さじ', cat:'spoonCup', aliases:['小さじ','小匙','こさじ'] },
+  { unit:'カップ', cat:'spoonCup', aliases:['カップ','cup'] },
+  { unit:'kg', cat:'largeUnit', aliases:['kg','キログラム','キロ'] },
+  { unit:'g', cat:'weightVolume', aliases:['g','グラム'] },
+  { unit:'ml', cat:'weightVolume', aliases:['ml','ミリリットル'] },
+  { unit:'cc', cat:'weightVolume', aliases:['cc','シーシー'] },
+  { unit:'L', cat:'largeUnit', aliases:['L','リットル','l'] },
+  { unit:'個', cat:'count', aliases:['個'] },
+  { unit:'本', cat:'count', aliases:['本'] },
+  { unit:'枚', cat:'count', aliases:['枚'] },
+  { unit:'切れ', cat:'count', aliases:['切れ'] },
+  { unit:'パック', cat:'count', aliases:['パック'] },
+  { unit:'缶', cat:'count', aliases:['缶'] },
+  { unit:'束', cat:'count', aliases:['束'] },
+  { unit:'房', cat:'count', aliases:['房'] },
+  { unit:'片', cat:'count', aliases:['片'] },
+  { unit:'株', cat:'count', aliases:['株'] },
+  { unit:'玉', cat:'count', aliases:['玉'] },
+  { unit:'尾', cat:'count', aliases:['尾'] },
+  { unit:'丁', cat:'count', aliases:['丁'] },
+  { unit:'袋', cat:'count', aliases:['袋'] },
+  { unit:'粒', cat:'count', aliases:['粒'] },
+  { unit:'人分', cat:'count', aliases:['人分'] }
+];
+var ALIAS_TO_UNIT = {};
+UNIT_DEFS.forEach(function(def){ def.aliases.forEach(function(a){ ALIAS_TO_UNIT[a] = def.unit; }); });
+function categoryOf(unit){
+  if(unit === '' || unit == null) return 'count';
+  for(var i = 0; i < UNIT_DEFS.length; i++){ if(UNIT_DEFS[i].unit === unit) return UNIT_DEFS[i].cat; }
+  return 'count'; /* unknown unit: treat as countable */
+}
+var UNIT_ALIASES_SORTED = Object.keys(ALIAS_TO_UNIT).sort(function(a,b){ return b.length - a.length; });
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+var UNIT_ALT_SRC = UNIT_ALIASES_SORTED.map(escapeRegExp).join('|');
+var PREFIX_UNITS = ['大さじ','大匙','おおさじ','小さじ','小匙','こさじ','カップ'];
+var VAGUE_MAP = { '少々':'少々', '少量':'少々', 'ひとつまみ':'ひとつまみ', '一つまみ':'ひとつまみ', '1つまみ':'ひとつまみ', '適量':'適量', '適宜':'適量', 'お好みで':'お好みで' };
+var VAGUE_ALIASES = Object.keys(VAGUE_MAP).sort(function(a,b){ return b.length - a.length; });
+
+function normalizeLine(s){
+  s = String(s).normalize('NFKC');
+  s = s.replace(/⁄/g, '/');
+  s = s.replace(/(\d),(?=\d)/g, '$1');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+var COUNT_UNIT_SRC = '個|本|枚|切れ|パック|缶|束|房|片|株|玉|尾|丁|袋|粒|人分';
+function parseLine(rawLine){
+  var raw = String(rawLine);
+  var s = normalizeLine(raw);
+  if(!s) return null;
+  var notes = [];
+  s = s.replace(/\(([^)]*)\)/g, function(m, c){ if(c.trim()) notes.push(c.trim()); return ' '; });
+  s = s.replace(/\s+/g, ' ').trim();
+  var i, alias, idx;
+  for(i = 0; i < VAGUE_ALIASES.length; i++){
+    alias = VAGUE_ALIASES[i];
+    idx = s.lastIndexOf(alias);
+    if(idx >= 0 && idx + alias.length === s.length){
+      var vname = s.slice(0, idx).trim();
+      return { kind:'free', name:vname, qty:null, unit:VAGUE_MAP[alias], note:notes.join(' '), raw:raw.trim() };
+    }
+  }
+  if(/\d\s*[〜~～]\s*\d/.test(s)) return { kind:'error', name:s, qty:null, unit:'', note:notes.join(' '), raw:raw.trim() };
+  var m;
+  m = s.match(new RegExp('^(.*?)\\s*半(' + COUNT_UNIT_SRC + ')$'));
+  if(m && m[1]) return { kind:'item', name:m[1].trim(), qty:frac(1,2), unit:m[2], note:notes.join(' '), raw:raw.trim() };
+  m = s.match(new RegExp('^(.*?)\\s*(' + QTY_RE_SRC + ')\\s*(' + COUNT_UNIT_SRC + ')半$'));
+  if(m && m[1]){
+    var base = parseQuantityString(m[2]);
+    if(base) return { kind:'item', name:m[1].trim(), qty:fracAdd(base, frac(1,2)), unit:m[3], note:notes.join(' '), raw:raw.trim() };
+  }
+  m = s.match(/^(.*?)\s*半分$/);
+  if(m && m[1]) return { kind:'item', name:m[1].trim(), qty:frac(1,2), unit:'', note:notes.join(' '), raw:raw.trim() };
+  m = s.match(new RegExp('^(.*?)\\s*(' + PREFIX_UNITS.map(escapeRegExp).join('|') + ')\\s*(' + QTY_RE_SRC + ')\\s*(.*)$'));
+  if(m && m[1]){
+    var pq = parseQuantityString(m[3]);
+    if(pq){
+      var pnote = notes.slice(); if(m[4] && m[4].trim()) pnote.push(m[4].trim());
+      return { kind:'item', name:m[1].trim(), qty:pq, unit:ALIAS_TO_UNIT[m[2]], note:pnote.join(' '), raw:raw.trim() };
+    }
+  }
+  m = s.match(new RegExp('^(.*?)\\s*(' + QTY_RE_SRC + ')\\s*(' + UNIT_ALT_SRC + ')\\s*(.*)$'));
+  if(m && m[1]){
+    var sq = parseQuantityString(m[2]);
+    if(sq){
+      var snote = notes.slice(); if(m[4] && m[4].trim()) snote.push(m[4].trim());
+      return { kind:'item', name:m[1].trim(), qty:sq, unit:ALIAS_TO_UNIT[m[3]], note:snote.join(' '), raw:raw.trim() };
+    }
+  }
+  m = s.match(new RegExp('^(.*?)\\s*(' + QTY_RE_SRC + ')$'));
+  if(m && m[1]){
+    var bq = parseQuantityString(m[2]);
+    if(bq) return { kind:'item', name:m[1].trim(), qty:bq, unit:'', note:notes.join(' '), raw:raw.trim() };
+  }
+  m = s.match(new RegExp('^(.*?)\\s*(' + QTY_RE_SRC + ')\\s*([^\\d\\s]{1,2})$'));
+  if(m && m[1]){
+    var uq = parseQuantityString(m[2]);
+    if(uq) return { kind:'item', name:m[1].trim(), qty:uq, unit:m[3], note:notes.join(' '), raw:raw.trim() };
+  }
+  if(/\d/.test(s)) return { kind:'error', name:s, qty:null, unit:'', note:notes.join(' '), raw:raw.trim() };
+  return { kind:'heading', name:s, qty:null, unit:'', note:notes.join(' '), raw:raw.trim() };
+}
+
+function formatDecimalTrim(f){
+  var v = Math.round(fracNum(f) * 10000) / 10000;
+  return String(v);
+}
+function formatDecimal2(f){
+  var v = Math.round((fracNum(f) + Number.EPSILON) * 100) / 100;
+  var s = v.toFixed(2);
+  return s.replace(/\.?0+$/, '');
+}
+var FRAC_STR = { '1/4':'1/4', '1/3':'1/3', '1/2':'1/2', '2/3':'2/3', '3/4':'3/4' };
+function formatFractionValue(f){
+  var whole = Math.floor(f.n / f.d);
+  var rem = frac(f.n - whole * f.d, f.d);
+  if(rem.n === 0) return String(whole);
+  var key = rem.n + '/' + rem.d;
+  if(!FRAC_STR[key]) return null;
+  if(whole === 0) return FRAC_STR[key];
+  return whole + 'と' + FRAC_STR[key];
+}
+function formatNatural(f, unit){
+  var cat = categoryOf(unit);
+  if(cat === 'spoonCup'){
+    var fr = formatFractionValue(f);
+    if(fr) return fr;
+  }
+  return formatDecimalTrim(f);
+}
+function formatWithUnit(qtyText, unit){
+  if(unit === '大さじ' || unit === '小さじ') return unit + qtyText;
+  return qtyText + unit;
+}
+function roundHalfUpStep(raw, step){
+  var q = fracDiv(raw, step);
+  var units = Math.floor((2 * q.n + q.d) / (2 * q.d));
+  return fracMul(frac(units, 1), step);
+}
+var SNAP_CANDIDATES = [frac(0,1), frac(1,4), frac(1,3), frac(1,2), frac(2,3), frac(3,4), frac(1,1)];
+function snapSpoonValue(raw){
+  var whole = Math.floor(raw.n / raw.d);
+  var part = frac(raw.n - whole * raw.d, raw.d);
+  var best = SNAP_CANDIDATES[0], bestDiff = null;
+  SNAP_CANDIDATES.forEach(function(c){
+    var diff = frac(Math.abs(part.n * c.d - c.n * part.d), part.d * c.d);
+    if(bestDiff === null || fracCmp(diff, bestDiff) < 0 || (fracCmp(diff, bestDiff) === 0 && fracCmp(c, best) > 0)){
+      best = c; bestDiff = diff;
+    }
+  });
+  return fracAdd(frac(whole, 1), best);
+}
+function convertItem(row, ratio, mode){
+  var raw = fracMul(row.qty, ratio);
+  var unit = row.unit;
+  var cat = categoryOf(unit);
+  var isOne = fracEq(ratio, frac(1,1));
+  if(mode === 'exact'){
+    var txt;
+    if(cat === 'spoonCup'){
+      var dec = formatDecimal2(raw);
+      var frv = (raw.d === 1 || raw.d === 2 || raw.d === 3 || raw.d === 4) ? formatFractionValue(raw) : null;
+      txt = (frv && dec !== frv) ? dec + '（' + frv + '）' : dec;
+    } else {
+      txt = formatDecimal2(raw);
+    }
+    return { text: formatWithUnit(txt, unit), rawNote:'', autoNotes:[] };
+  }
+  if(isOne){
+    return { text: formatWithUnit(formatNatural(raw, unit), unit), rawNote:'', autoNotes:[] };
+  }
+  var autoNotes = [];
+  if(cat === 'weightVolume'){
+    var v = fracNum(raw);
+    var step = v < 10 ? frac(1,2) : (v < 100 ? frac(1,1) : (v < 1000 ? frac(5,1) : frac(10,1)));
+    var rounded = roundHalfUpStep(raw, step);
+    if(rounded.n === 0) rounded = step;
+    return { text: formatWithUnit(formatDecimalTrim(rounded), unit), rawNote: fracEq(rounded, raw) ? '' : ('換算値' + formatDecimal2(raw) + unit), autoNotes:autoNotes };
+  }
+  if(cat === 'spoonCup'){
+    var snapped = snapSpoonValue(raw);
+    if(snapped.n === 0) snapped = frac(1,4);
+    var ftxt = formatFractionValue(snapped);
+    if(unit === '小さじ' && fracCmp(raw, frac(3,1)) >= 0){
+      var equiv = snapSpoonValue(fracDiv(raw, frac(3,1)));
+      var etxt = formatFractionValue(equiv);
+      if(etxt) autoNotes.push('大さじ' + etxt + '相当');
+    }
+    return { text: formatWithUnit(ftxt, unit), rawNote: fracEq(snapped, raw) ? '' : ('換算値' + formatDecimal2(raw)), autoNotes:autoNotes };
+  }
+  if(cat === 'largeUnit'){
+    var roundedL = roundHalfUpStep(raw, frac(1,100));
+    if(fracCmp(raw, frac(1,1)) < 0){
+      var grams = roundHalfUpStep(fracMul(raw, frac(1000,1)), frac(1,1));
+      autoNotes.push('約' + formatDecimalTrim(grams) + (unit === 'kg' ? 'g' : 'ml'));
+    }
+    return { text: formatWithUnit(formatDecimalTrim(roundedL), unit), rawNote: fracEq(roundedL, raw) ? '' : ('換算値' + formatDecimal2(raw) + unit), autoNotes:autoNotes };
+  }
+  var roundedC = roundHalfUpStep(raw, frac(1,4));
+  if(roundedC.n === 0) roundedC = frac(1,4);
+  return { text: formatWithUnit(formatDecimalTrim(roundedC), unit), rawNote: fracEq(roundedC, raw) ? '' : ('換算値' + formatDecimal2(raw) + unit), autoNotes:autoNotes };
+}
+function originalDisplay(row){
+  if(row.kind === 'free') return row.unit;
+  if(row.kind !== 'item') return '';
+  return formatWithUnit(formatNatural(row.qty, row.unit), row.unit);
+}
+function validateServings(fromStr, toStr){
+  var from = fracFromDecimalString(String(fromStr).trim());
+  var to = fracFromDecimalString(String(toStr).trim());
+  if(!from || !to) return { ok:false, error:'人数は数字で入力してください' };
+  if(fracCmp(from, frac(0,1)) <= 0 || fracCmp(to, frac(0,1)) <= 0) return { ok:false, error:'人数は0より大きくしてください' };
+  if(fracCmp(from, frac(20,1)) > 0 || fracCmp(to, frac(20,1)) > 0) return { ok:false, error:'人数は20人前までです' };
+  var half = frac(1,2);
+  if(!fracEq(fracDiv(from, half), frac(Math.round(fracNum(fracDiv(from, half))),1)) || !fracEq(fracDiv(to, half), frac(Math.round(fracNum(fracDiv(to, half))),1)))
+    return { ok:false, error:'人数は0.5刻みで入力してください' };
+  return { ok:true, from:from, to:to, ratio:fracDiv(to, from) };
+}
+function multiplierTarget(from, mult){
+  var to = fracMul(from, mult);
+  if(fracCmp(to, frac(1,2)) < 0 || fracCmp(to, frac(20,1)) > 0) return null;
+  var halves = fracDiv(to, frac(1,2));
+  if(halves.d !== 1) return null;
+  return to;
+}
+var RecipeScalerCore = { frac:frac, fracFromDecimalString:fracFromDecimalString, parseQuantityString:parseQuantityString, fracNum:fracNum, fracEq:fracEq, parseLine:parseLine, categoryOf:categoryOf, convertItem:convertItem, originalDisplay:originalDisplay, validateServings:validateServings, multiplierTarget:multiplierTarget, formatDecimalTrim:formatDecimalTrim, formatFractionValue:formatFractionValue };
+if(typeof window !== 'undefined') window.RecipeScalerCore = RecipeScalerCore;
+if(typeof module !== 'undefined' && module.exports) module.exports = RecipeScalerCore;
+</script>
+<script>
+'use strict';
+/* ===== UI ===== */
+var Core = window.RecipeScalerCore;
+var SAMPLES = [
+  { id:'teriyaki', name:'鶏むね肉の照り焼き（サンプル）', servings:2, lines:['鶏むね肉 1枚（約250g）','しょうゆ 大さじ2','みりん 大さじ2','酒 大さじ1','砂糖 小さじ2','サラダ油 小さじ1','塩 少々','こしょう 少々'] },
+  { id:'miso', name:'豆腐とわかめの味噌汁（サンプル）', servings:4, lines:['水 800ml','だし入り味噌 大さじ3と1/2','絹ごし豆腐 1/2丁','乾燥わかめ 4g','長ねぎ 1/2本'] },
+  { id:'pancake', name:'パンケーキ（分数と目分量のサンプル）', servings:2, lines:['[生地]','薄力粉 150g','砂糖 大さじ2','ベーキングパウダー 小さじ1と1/2','卵 1個','牛乳 100ml','バター 10g','塩 ひとつまみ','はちみつ 適量'] }
+];
+var LS_CURRENT = 'recipeScaler.v1.current';
+var LS_HISTORY = 'recipeScaler.v1.history';
+var state = { from:'2', to:'1', mode:'practical', rows:[] };
+var rowSeq = 1;
+function newRow(r){ r.id = rowSeq++; return r; }
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+function serializeRows(){
+  return state.rows.map(function(r){ return { kind:r.kind, name:r.name, qty:r.qty ? { n:r.qty.n, d:r.qty.d } : null, unit:r.unit, note:r.note, raw:r.raw }; });
+}
+function deserializeRows(arr){
+  if(!Array.isArray(arr)) return [];
+  var out = [];
+  arr.forEach(function(r){
+    if(!r || typeof r.name !== 'string') return;
+    out.push(newRow({ kind:r.kind || 'item', name:r.name, qty:r.qty ? Core.frac(r.qty.n, r.qty.d) : null, unit:r.unit || '', note:r.note || '', raw:r.raw || r.name }));
+  });
+  return out;
+}
+var saveTimer = null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    try{ localStorage.setItem(LS_CURRENT, JSON.stringify({ from:state.from, to:state.to, mode:state.mode, rows:serializeRows() })); }catch(e){ /* storage unavailable */ }
+  }, 300);
+}
+function loadCurrent(){
+  try{
+    var s = localStorage.getItem(LS_CURRENT);
+    if(!s) return;
+    var data = JSON.parse(s);
+    if(typeof data.from === 'string') state.from = data.from;
+    if(typeof data.to === 'string') state.to = data.to;
+    if(data.mode === 'exact' || data.mode === 'practical') state.mode = data.mode;
+    state.rows = deserializeRows(data.rows);
+  }catch(e){ /* corrupted storage: start fresh */ }
+}
+function loadHistory(){
+  try{ var h = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); return Array.isArray(h) ? h : []; }catch(e){ return []; }
+}
+function storeHistory(h){
+  try{ localStorage.setItem(LS_HISTORY, JSON.stringify(h)); }catch(e){ /* ignore */ }
+}
+
+function currentValidation(){ return Core.validateServings(state.from, state.to); }
+function formatQtyForEdit(f){
+  if(!f) return '';
+  var fr = Core.formatFractionValue(f);
+  if(fr && f.d !== 1) return fr;
+  return Core.formatDecimalTrim(f);
+}
+
+function renderQuick(){
+  var v = currentValidation();
+  var qt = $('quick-to'); qt.innerHTML = '';
+  qt.appendChild(el('span', 'qlabel', '作りたい:'));
+  [1,2,3,4,5,6].forEach(function(n){
+    var b = el('button', null, n + '人前');
+    b.type = 'button';
+    b.addEventListener('click', function(){ state.to = String(n); $('to-input').value = state.to; renderAll(); });
+    qt.appendChild(b);
+  });
+  var qm = $('quick-mult'); qm.innerHTML = '';
+  qm.appendChild(el('span', 'qlabel', '倍率:'));
+  var mults = [ { f:Core.frac(1,2), label:'0.5倍' }, { f:Core.frac(3,2), label:'1.5倍' }, { f:Core.frac(2,1), label:'2倍' }, { f:Core.frac(3,1), label:'3倍' } ];
+  mults.forEach(function(mt){
+    var b = el('button', null, mt.label);
+    b.type = 'button';
+    var target = null;
+    if(v.ok) target = Core.multiplierTarget(v.from, mt.f);
+    if(!target){ b.disabled = true; b.title = 'この倍率だと作りたい人数が0.5刻みにならないか、範囲外になります'; }
+    b.addEventListener('click', function(){
+      var vv = currentValidation();
+      if(!vv.ok) return;
+      var t = Core.multiplierTarget(vv.from, mt.f);
+      if(!t) return;
+      state.to = Core.formatDecimalTrim(t);
+      $('to-input').value = state.to;
+      renderAll();
+    });
+    qm.appendChild(b);
+  });
+}
+
+function renderRows(){
+  var tbody = $('rows-body');
+  tbody.innerHTML = '';
+  var unitList = $('unit-list');
+  state.rows.forEach(function(row, index){
+    var tr = document.createElement('tr');
+    var tdMain = document.createElement('td');
+    var tdBtns = document.createElement('td');
+    tdBtns.className = 'row-btns';
+    var nameInput = document.createElement('input');
+    nameInput.className = 'row-name'; nameInput.type = 'text'; nameInput.value = row.name;
+    nameInput.setAttribute('aria-label', '材料名');
+    nameInput.addEventListener('input', function(){ row.name = nameInput.value; if(row.kind !== 'item' && row.kind !== 'free') row.raw = nameInput.value; renderResults(); scheduleSave(); });
+    tdMain.appendChild(nameInput);
+    if(row.kind === 'heading'){
+      var tag = el('span', 'tag tag-heading', '見出し'); tdMain.appendChild(tag);
+    } else if(row.kind === 'free'){
+      var tagF = el('span', 'tag tag-free', 'そのまま（変換しません）'); tdMain.appendChild(tagF);
+      var unitDiv = el('div', 'result-note', '目分量: ' + row.unit);
+      tdMain.appendChild(unitDiv);
+    } else if(row.kind === 'error'){
+      var tagE = el('span', 'tag tag-error', '数量が読み取れませんでした'); tdMain.appendChild(tagE);
+    } else {
+      var line = document.createElement('div');
+      line.style.display = 'flex'; line.style.gap = '6px'; line.style.marginTop = '4px';
+      var qtyInput = document.createElement('input');
+      qtyInput.className = 'row-qty'; qtyInput.type = 'text'; qtyInput.setAttribute('inputmode', 'decimal');
+      qtyInput.value = formatQtyForEdit(row.qty);
+      qtyInput.setAttribute('aria-label', '数量');
+      qtyInput.addEventListener('change', function(){
+        var parsed = Core.parseQuantityString(qtyInput.value);
+        if(parsed){ row.qty = parsed; }
+        else { qtyInput.value = formatQtyForEdit(row.qty); $('copy-status').textContent = '数量は数字か分数（例: 1/2、1と1/2）で入力してください'; }
+        renderResults(); scheduleSave();
+      });
+      var unitInput = document.createElement('input');
+      unitInput.className = 'row-unit'; unitInput.type = 'text'; unitInput.setAttribute('list', 'unit-list');
+      unitInput.value = row.unit;
+      unitInput.setAttribute('aria-label', '単位');
+      unitInput.addEventListener('input', function(){ row.unit = unitInput.value.trim(); renderResults(); scheduleSave(); });
+      line.appendChild(qtyInput); line.appendChild(unitInput);
+      tdMain.appendChild(line);
+      var fracDiv = el('div', 'frac-btns');
+      ['1/2','1/3','2/3','1/4','3/4'].forEach(function(fs){
+        var fb = el('button', null, fs); fb.type = 'button';
+        fb.addEventListener('click', function(){
+          var cur = row.qty;
+          var fpart = Core.parseQuantityString(fs);
+          if(cur && cur.d === 1 && cur.n >= 1){ row.qty = { n: cur.n * fpart.d + fpart.n, d: fpart.d }; row.qty = Core.frac(row.qty.n, row.qty.d); }
+          else row.qty = fpart;
+          renderRows(); renderResults(); scheduleSave();
+        });
+        fracDiv.appendChild(fb);
+      });
+      tdMain.appendChild(fracDiv);
+      var noteInput = document.createElement('input');
+      noteInput.className = 'row-note'; noteInput.type = 'text'; noteInput.placeholder = '備考（例: 皮なし）';
+      noteInput.value = row.note || '';
+      noteInput.addEventListener('input', function(){ row.note = noteInput.value; renderResults(); scheduleSave(); });
+      tdMain.appendChild(noteInput);
+    }
+    var up = el('button', null, '↑'); up.type = 'button'; up.setAttribute('aria-label', '上へ');
+    up.addEventListener('click', function(){ if(index > 0){ var t = state.rows[index-1]; state.rows[index-1] = row; state.rows[index] = t; renderRows(); renderResults(); scheduleSave(); } });
+    var down = el('button', null, '↓'); down.type = 'button'; down.setAttribute('aria-label', '下へ');
+    down.addEventListener('click', function(){ if(index < state.rows.length - 1){ var t = state.rows[index+1]; state.rows[index+1] = row; state.rows[index] = t; renderRows(); renderResults(); scheduleSave(); } });
+    var del = el('button', null, '×'); del.type = 'button'; del.setAttribute('aria-label', '削除');
+    del.addEventListener('click', function(){ state.rows.splice(index, 1); renderRows(); renderResults(); scheduleSave(); });
+    tdBtns.appendChild(up); tdBtns.appendChild(down); tdBtns.appendChild(del);
+    tr.appendChild(tdMain); tr.appendChild(tdBtns);
+    tbody.appendChild(tr);
+  });
+  if(state.rows.length === 0){
+    var tr2 = document.createElement('tr');
+    var td2 = document.createElement('td');
+    td2.colSpan = 2;
+    td2.appendChild(el('span', 'result-note', 'まだ材料がありません。貼り付けか「＋ 材料を追加」から入れてください。'));
+    tr2.appendChild(td2);
+    tbody.appendChild(tr2);
+  }
+}
+
+function convertedFor(row, v){
+  return Core.convertItem(row, v.ratio, state.mode);
+}
+function renderResults(){
+  var v = currentValidation();
+  var disp = $('ratio-display');
+  var err = $('serv-error');
+  var list = $('result-list');
+  list.innerHTML = '';
+  if(!v.ok){
+    err.textContent = v.error;
+    disp.textContent = '人数を確認してください';
+    $('result-title').textContent = '変換後';
+    return;
+  }
+  err.textContent = '';
+  var fromT = Core.formatDecimalTrim(v.from);
+  var toT = Core.formatDecimalTrim(v.to);
+  var multT = Core.fracNum(v.ratio);
+  multT = String(Math.round(multT * 100) / 100);
+  disp.innerHTML = '';
+  disp.appendChild(document.createTextNode(fromT + '人前 → ' + toT + '人前 ＝ '));
+  var ms = el('span', 'mult', multT + '倍' + (Core.fracEq(v.ratio, Core.frac(1,1)) ? '（同量です）' : ''));
+  disp.appendChild(ms);
+  $('result-title').textContent = '変換後（' + toT + '人前）';
+  state.rows.forEach(function(row){
+    if(row.kind === 'heading'){
+      list.appendChild(el('div', 'result-heading', row.name));
+      return;
+    }
+    var div = el('div', 'result-row');
+    if(row.kind === 'error'){
+      div.appendChild(el('span', 'result-name result-error', '（要確認）' + row.raw));
+      return;
+    }
+    if(row.kind === 'free'){
+      var nf = el('span', 'result-name', row.name);
+      div.appendChild(nf);
+      div.appendChild(el('span', 'result-conv', row.unit));
+      var noteF = el('div', 'result-note', 'そのまま');
+      nf.appendChild(noteF);
+      list.appendChild(div);
+      return;
+    }
+    var conv = convertedFor(row, v);
+    var ndiv = el('span', 'result-name', row.name || '（材料名なし）');
+    var notes = [];
+    if(row.note) notes.push(row.note + (/\d/.test(row.note) ? '（備考は元の分量のまま）' : ''));
+    if(conv.rawNote) notes.push(conv.rawNote);
+    conv.autoNotes.forEach(function(n){ notes.push(n); });
+    if(notes.length) ndiv.appendChild(el('div', 'result-note', notes.join(' / ')));
+    div.appendChild(ndiv);
+    div.appendChild(el('span', 'result-orig', Core.originalDisplay(row) + ' →'));
+    div.appendChild(el('span', 'result-conv', conv.text));
+    list.appendChild(div);
+  });
+  if(state.rows.length === 0) list.appendChild(el('div', 'result-note', '材料を入れると、ここに変換後の分量が出ます。'));
+}
+
+function buildCopyLines(withHeader){
+  var v = currentValidation();
+  if(!v.ok) return '';
+  var lines = [];
+  if(withHeader){
+    var multT = String(Math.round(Core.fracNum(v.ratio) * 100) / 100);
+    lines.push(Core.formatDecimalTrim(v.to) + '人前（' + Core.formatDecimalTrim(v.from) + '人前×' + multT + '倍）');
+  }
+  state.rows.forEach(function(row){
+    if(row.kind === 'heading') lines.push(row.name);
+    else if(row.kind === 'error') lines.push('（要確認）' + row.raw);
+    else if(row.kind === 'free') lines.push(row.name + ' ' + row.unit);
+    else lines.push((row.name || '（材料名なし）') + ' ' + convertedFor(row, v).text);
+  });
+  return lines.join('\n');
+}
+function copyText(text, doneMsg){
+  function done(){ $('copy-status').textContent = doneMsg; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text); done(); });
+  } else { fallbackCopy(text); done(); }
+}
+function fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){ /* ignore */ }
+  document.body.removeChild(ta);
+}
+
+function renderHistory(){
+  var h = loadHistory();
+  var list = $('history-list');
+  list.innerHTML = '';
+  if(h.length === 0){ list.appendChild(el('div', 'result-note', '保存したレシピはまだありません。')); return; }
+  h.forEach(function(item, index){
+    var div = el('div', 'history-item');
+    var nd = el('span', 'hname', item.name);
+    nd.appendChild(el('div', 'hdate', item.savedAt || ''));
+    div.appendChild(nd);
+    var load = el('button', 'act small', '呼び出し'); load.type = 'button';
+    load.addEventListener('click', function(){
+      state.from = item.from; state.to = item.to; state.mode = item.mode || 'practical';
+      state.rows = deserializeRows(item.rows);
+      $('from-input').value = state.from; $('to-input').value = state.to;
+      document.querySelectorAll('input[name="mode"]').forEach(function(r){ r.checked = (r.value === state.mode); });
+      renderAll();
+      $('history-status').textContent = '「' + item.name + '」を呼び出しました';
+    });
+    var del = el('button', 'act small', '削除'); del.type = 'button';
+    del.addEventListener('click', function(){
+      if(!confirm('「' + item.name + '」を削除しますか？')) return;
+      var hh = loadHistory(); hh.splice(index, 1); storeHistory(hh); renderHistory();
+    });
+    div.appendChild(load); div.appendChild(del);
+    list.appendChild(div);
+  });
+}
+
+function renderAll(){ renderQuick(); renderRows(); renderResults(); scheduleSave(); }
+
+function importLines(lines, servingsFrom){
+  var parsed = [];
+  lines.forEach(function(line){ var r = Core.parseLine(line); if(r) parsed.push(newRow(r)); });
+  if(parsed.length === 0){ $('copy-status').textContent = '取り込める材料がありませんでした'; return; }
+  if(state.rows.length > 0){
+    var replace = confirm('既存の材料があります。OKを押すと入れ替え、キャンセルを押すと追加します。');
+    state.rows = replace ? parsed : state.rows.concat(parsed);
+  } else state.rows = parsed;
+  if(servingsFrom){ state.from = String(servingsFrom); $('from-input').value = state.from; }
+  $('paste-area').value = '';
+  renderAll();
+}
+
+function init(){
+  loadCurrent();
+  $('from-input').value = state.from;
+  $('to-input').value = state.to;
+  var dl = document.createElement('datalist');
+  dl.id = 'unit-list';
+  ['', 'g','kg','ml','L','cc','大さじ','小さじ','カップ','個','本','枚','切れ','パック','缶','束','房','片','株','玉','尾','丁','袋','粒','人分'].forEach(function(u){
+    var o = document.createElement('option'); o.value = u; dl.appendChild(o);
+  });
+  document.body.appendChild(dl);
+  document.querySelectorAll('input[name="mode"]').forEach(function(r){
+    r.checked = (r.value === state.mode);
+    r.addEventListener('change', function(){ state.mode = r.value; renderResults(); scheduleSave(); });
+  });
+  var sel = $('sample-select');
+  SAMPLES.forEach(function(s, i){ var o = document.createElement('option'); o.value = String(i); o.textContent = s.name; sel.appendChild(o); });
+  function step(which, delta){
+    var cur = Core.fracFromDecimalString(which === 'from' ? state.from : state.to) || Core.frac(2,1);
+    var next = Core.frac(cur.n * 2 + delta, cur.d * 2);
+    next = Core.frac(next.n, next.d);
+    if(Core.fracNum(next) < 0.5 || Core.fracNum(next) > 20) return;
+    var txt = Core.formatDecimalTrim(next);
+    if(which === 'from'){ state.from = txt; $('from-input').value = txt; } else { state.to = txt; $('to-input').value = txt; }
+    renderAll();
+  }
+  $('from-minus').addEventListener('click', function(){ step('from', -1); });
+  $('from-plus').addEventListener('click', function(){ step('from', 1); });
+  $('to-minus').addEventListener('click', function(){ step('to', -1); });
+  $('to-plus').addEventListener('click', function(){ step('to', 1); });
+  $('from-input').addEventListener('input', function(){ state.from = $('from-input').value; renderQuick(); renderResults(); scheduleSave(); });
+  $('to-input').addEventListener('input', function(){ state.to = $('to-input').value; renderQuick(); renderResults(); scheduleSave(); });
+  $('from-input').addEventListener('change', function(){ renderRows(); });
+  $('parse-btn').addEventListener('click', function(){
+    var lines = $('paste-area').value.split('\n');
+    importLines(lines, null);
+  });
+  $('paste-clear-btn').addEventListener('click', function(){ $('paste-area').value = ''; });
+  $('sample-btn').addEventListener('click', function(){
+    var s = SAMPLES[parseInt(sel.value, 10) || 0];
+    importLines(s.lines.slice(), s.servings);
+  });
+  $('add-row-btn').addEventListener('click', function(){
+    state.rows.push(newRow({ kind:'item', name:'', qty:Core.frac(1,1), unit:'g', note:'', raw:'' }));
+    renderRows(); scheduleSave();
+  });
+  $('copy-conv-btn').addEventListener('click', function(){
+    var t = buildCopyLines(false);
+    if(t) copyText(t, '変換後の分量をコピーしました');
+  });
+  $('copy-memo-btn').addEventListener('click', function(){
+    var t = buildCopyLines(true);
+    if(t) copyText(t, '買い物メモ形式でコピーしました');
+  });
+  $('share-btn').addEventListener('click', function(){
+    var t = buildCopyLines(true);
+    if(!t) return;
+    if(navigator.share){ navigator.share({ title:'レシピ分量変換', text:t }).catch(function(){ /* cancelled */ }); }
+    else copyText(t, '共有に対応していないため、コピーしました');
+  });
+  $('save-history-btn').addEventListener('click', function(){
+    if(state.rows.length === 0){ $('history-status').textContent = '材料がありません。先に材料を入れてください'; return; }
+    var h = loadHistory();
+    var defName = state.from + '人前→' + state.to + '人前 ' + new Date().toLocaleDateString('ja-JP');
+    var name = prompt('保存する名前', defName);
+    if(!name) return;
+    var existing = -1;
+    h.forEach(function(item, i){ if(item.name === name) existing = i; });
+    if(existing < 0 && h.length >= 20){ $('history-status').textContent = '履歴は20件までです。不要なものを削除してから保存してください'; return; }
+    if(existing >= 0 && !confirm('同じ名前の保存があります。上書きしますか？')) return;
+    var item = { name:name, savedAt:new Date().toLocaleString('ja-JP'), from:state.from, to:state.to, mode:state.mode, rows:serializeRows() };
+    if(existing >= 0) h[existing] = item; else h.push(item);
+    storeHistory(h); renderHistory();
+    $('history-status').textContent = '「' + name + '」を保存しました（' + h.length + '件）';
+  });
+  $('clear-current-btn').addEventListener('click', function(){
+    if(!confirm('現在の入力（人数と材料）を消しますか？履歴は消えません。')) return;
+    state.from = '2'; state.to = '1'; state.mode = 'practical'; state.rows = [];
+    $('from-input').value = '2'; $('to-input').value = '1'; $('paste-area').value = '';
+    document.querySelectorAll('input[name="mode"]').forEach(function(r){ r.checked = (r.value === 'practical'); });
+    renderAll();
+  });
+  $('clear-history-btn').addEventListener('click', function(){
+    if(!confirm('保存した履歴をすべて削除しますか？現在の入力は消えません。')) return;
+    storeHistory([]); renderHistory();
+    $('history-status').textContent = '履歴を全て削除しました';
+  });
+  renderAll();
+  renderHistory();
+  if(new URLSearchParams(location.search).has('test')) runSelfTest();
+}
+
+function runSelfTest(){
+  var section = $('test-section');
+  section.classList.remove('hidden');
+  var out = [];
+  var total = 0, passed = 0;
+  function check(name, expected, actual){
+    total++;
+    var ok = expected === actual;
+    if(ok) passed++;
+    out.push((ok ? '○' : '×') + ' ' + name + ' | 期待: ' + expected + ' | 実際: ' + actual);
+  }
+  function conv(line, from, to, mode){
+    var row = Core.parseLine(line);
+    var v = Core.validateServings(String(from), String(to));
+    if(!row || !v.ok) return 'ERROR';
+    if(row.kind === 'free') return row.unit + '（そのまま）';
+    if(row.kind !== 'item') return row.kind;
+    return Core.convertItem(row, v.ratio, mode || 'practical').text;
+  }
+  check('倍量 鶏むね肉200g', '400g', conv('鶏むね肉 200g', 2, 4));
+  check('倍量 しょうゆ大さじ2', '大さじ4', conv('しょうゆ 大さじ2', 2, 4));
+  check('倍量 卵2個', '4個', conv('卵 2個', 2, 4));
+  check('半量 鶏肉200g', '100g', conv('鶏肉 200g', 2, 1));
+  check('半量 砂糖小さじ1', '小さじ1/2', conv('砂糖 小さじ1', 2, 1));
+  check('1.5倍 卵1個', '1.5個', conv('卵 1個', 2, 3));
+  check('1.5倍 牛乳1/2カップ', '3/4カップ', conv('牛乳 1/2カップ', 2, 3));
+  check('2/3倍 水100ml', '67ml', conv('水 100ml', 3, 2));
+  check('2/3倍 砂糖大さじ1', '大さじ2/3', conv('砂糖 大さじ1', 3, 2));
+  check('2/3倍 薄力粉500g', '335g', conv('薄力粉 500g', 3, 2));
+  check('2/3倍 しょうゆ大さじ2', '大さじ1と1/3', conv('しょうゆ 大さじ2', 3, 2));
+  check('目分量 塩 少々', '少々（そのまま）', conv('塩 少々', 2, 6));
+  check('目分量 はちみつ 適量', '適量（そのまま）', conv('はちみつ 適量', 2, 6));
+  function parseDesc(line){ var r = Core.parseLine(line); if(!r) return 'null'; return r.name + '/' + (r.qty ? Core.formatDecimalTrim(r.qty) : '-') + '/' + (r.unit || '-'); }
+  check('分解 鶏肉200g', '鶏肉/200/g', parseDesc('鶏肉200g'));
+  check('分解 全角', '鶏肉/200/g', parseDesc('鶏肉 ２００ｇ'));
+  check('分解 絹ごし豆腐 1/2丁', '絹ごし豆腐/0.5/丁', parseDesc('絹ごし豆腐 1/2丁'));
+  check('分解 備考つき', '鶏むね肉/1/枚', parseDesc('鶏むね肉 1枚（約250g）'));
+  check('分解 帯分数', '砂糖/1.5/小さじ', parseDesc('砂糖 小さじ1と1/2'));
+  out.push('---');
+  out.push('合計 ' + total + '件 / 合格 ' + passed + '件');
+  $('test-output').textContent = out.join('\n');
+}
+document.addEventListener('DOMContentLoaded', init);
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(function(){ /* offline support unavailable */ }); }
+</script>
+</body>
+</html>
